@@ -6,6 +6,7 @@ import { Text } from 'react-native';
 
 const AuthStack = createNativeStackNavigator();
 
+
 const authRoutes = (
     <AuthStack.Navigator initialRouteName='Login'>
         <AuthStack.Screen name ={AuthRouteNames.LOGIN} component={LoginScreen} options={
