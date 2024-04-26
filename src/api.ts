@@ -14,7 +14,6 @@ export const login = async (email: string, password: string): Promise<string> =>
     })
 
     const data = await result.json();
-    console.log(data);
     return data.accessToken;
 };
 
@@ -28,6 +27,5 @@ export const register = async (email: string, password: string) => {
     })
 
     const data = await result.json();
-    console.log(data);
     return data.accessToken;
 };
