@@ -10,7 +10,7 @@ const gameRoutes = (
     <GameStack.Navigator>
         <GameStack.Screen name ={GameRouteNames.TABLE} component={TableScreen} options={
             {
-                headerTitle: (props) => <Text {...props} style={{fontSize: 24}}>Game</Text>
+                headerTitle: (props) => <Text {...props} style={{fontSize: 24}}>Games</Text>
             }
         } />
     </GameStack.Navigator>

@@ -1,29 +1,46 @@
-import React, { createContext, useContext } from "react";
+import React, { createContext, useContext, useEffect, useState } from "react";
 import { login, register } from "../api";
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface IAuthContext {
     token: string;
     login: (email: string, password: string) => Promise<void>;
     register: (email: string, password: string) => Promise<void>;
+    isLoading: boolean;
 }
 
 export const AuthContext = createContext<IAuthContext>(
     {
         token: '',
         login: async () => {},
-        register: async () => {}
+        register: async () => {},
+        isLoading: false
     }
 )
 
 export const AuthContextProvider: React.FC<{children: React.ReactNode}> = ({children}) => {
     
-    const [token, setToken] = React.useState<string>('');
+    const [token, setToken] = useState<string>('');
+    const [isLoading, setIsLoading] = useState(false);
+
+    useEffect(() => {
+        setIsLoading(true);
+        AsyncStorage.getItem('token').then(value => {
+            if(value){
+                setToken(value);
+            } else {
+                setToken('');
+            }
+        })
+        .finally(() => setIsLoading(false));
+    }, []);
 
     const handleLogin = async (email: string, password: string) => {
         try{
             const result = await login(email, password);
             console.log('login: ', result);
             setToken(result);
+            await AsyncStorage.setItem('token', result);
         }
         catch(error) {
             console.log(error);
@@ -35,6 +52,8 @@ export const AuthContextProvider: React.FC<{children: React.ReactNode}> = ({chil
             const result = await register(email, password);
             console.log(result);
             setToken(result);
+            await AsyncStorage.setItem('token', result);
+
         }
         catch(error) {
             console.log(error);
@@ -46,7 +65,8 @@ export const AuthContextProvider: React.FC<{children: React.ReactNode}> = ({chil
             {
                 token,
                 login: handleLogin,
-                register: handleRegister
+                register: handleRegister,
+                isLoading
             }
         }>
             {children}
