@@ -4,5 +4,6 @@ export const enum AuthRouteNames {
 }
 
 export const enum GameRouteNames {
-    TABLE = 'GAMES'
+    TABLE = 'GAMES',
+    LOBBY = 'LOBBY'
 }

@@ -71,3 +71,17 @@ export const getDetailsOfGame = async (token: string, gameId: string) => {
     console.log(data);
     return data;
 }
+
+export const getUserDetails = async (token: string) => {
+    const result = await fetch(`${baseUrl}/user/details/me`, {
+        method: 'GET',
+        headers: {
+            ...baseHeaders,
+            'Authorization': `Bearer ${token}`
+        }
+    })
+
+    const data = await result.json();
+    console.log(data);
+    return data;
+}

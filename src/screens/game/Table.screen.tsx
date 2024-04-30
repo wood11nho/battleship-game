@@ -1,94 +1,58 @@
-import { useEffect, useState } from 'react';
-import { createGame, getDetailsOfGame, listGames } from '../../api';
-import { useAuth } from '../../hooks/authContext';
-import GameListItem from '../../components/GameListItem';
+import React, { useEffect } from 'react';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Text } from 'react-native';
 import styled from 'styled-components/native';
+import { useRoute } from '@react-navigation/native';
+import { GameContext, useGameContext } from '../../hooks/gameContext';
+import Table from '../../components/Table';
 
-const Container = styled.View`
+const StyledSafeAreaView = styled(SafeAreaView)`
     flex: 1;
-    position: relative;
+    background-color: #f0f8ff;
+    align-items: center;
+    justify-content: center;
 `;
 
-const FloatingButton = styled.TouchableOpacity`
-    position: absolute;
-    right: 20px;
-    bottom: 20px;
-    background-color: #007bff;
-    padding: 15px 20px;
-    border-radius: 30px;
-    elevation: 2;
-    shadow-color: #000;
-    shadow-opacity: 0.3;
-    shadow-radius: 4px;
-    shadow-offset: 0px 2px;
-`;
-
-const GameList = styled.ScrollView`
-    border: 1px solid #000;
-    border-radius: 5px;
-    margin: 10px;
-    padding: 10px;
-    height: 100%;
-    background-color: #f8f9fa;
-    border-color: #adb5bd;
-`;
-
-const Header = styled.View`
-    flex-direction: row;
-    justify-content: space-between;
-    padding: 10px;
-    margin: 10px;
-`;
-
-const HeaderText = styled.Text`
+const Heading = styled(Text)`
+    color: #2e4c6d;
+    font-size: 24px;
     font-weight: bold;
-    color: #333;
-`;
-
-const IDHeader = styled(HeaderText)`
-    flex: 1;
-`;
-
-const StatusHeader = styled(HeaderText)`
-    text-align: center;
+    margin-bottom: 20px;
 `;
 
 const TableScreen = () => {
-    const auth = useAuth()
-    const [games, setGames] = useState<any[]>([])
+    const route = useRoute<any>();
+    const game = useGameContext();
+
+    console.log('game: ', game);
 
     useEffect(() => {
-        listGames(auth.token).then(setGames)
-    }, [])
-
-    const handleCreateGame = async () => {
-        await createGame(auth.token);
-        await listGames(auth.token).then(setGames);
-    }
+        if (route.params && route.params.gameId) {
+            game.getDetailsOfGame(route.params.gameId);
+        }
+    }, [route.params.gameId]);
 
     return (
-        <Container>
-            <Header>
-                <IDHeader>ID</IDHeader>
-                <StatusHeader>Status</StatusHeader>
-            </Header>
-            <GameList>
-                {games.map(game => (
-                    <GameListItem status={game.status} 
-                    id={game.id} 
-                    key={game.id} 
-                    onPress={
-                        () => getDetailsOfGame(auth.token, game.id)
-                    }
-                    />
-                ))}
-            </GameList>
-            <FloatingButton onPress={() => handleCreateGame()}>
-                <Text style={{ color: 'white', fontSize: 16 }}>Create Game</Text>
-            </FloatingButton>
-        </Container>
+        <StyledSafeAreaView>
+            <Heading>Game Table</Heading>
+            <Table state={[
+                ['','','','','','','','','',''],
+                ['','','','','','','','','',''],
+                ['','','','','','','','','',''],
+                ['','','','','','','','','',''],
+                ['','','','','','','','','',''],
+                ['','','','','','','','','',''],
+                ['','','','','','','','','',''],
+                ['','','','','','','','','',''],
+                ['','','','','','','','','',''],
+                ['','','','','','','','','','']
+            ]} onCellClick={() => {}} />
+        </StyledSafeAreaView>
     );
 }
 
-export default TableScreen
+export default () => (
+    <GameContext>
+        <TableScreen />
+    </GameContext>
+);
