@@ -1,11 +1,11 @@
-import { useEffect, useState } from 'react';
-import { createGame, getDetailsOfGame, listGames } from '../../api';
+import { useCallback, useEffect, useState } from 'react';
+import { createGame, getDetailsOfGame, getUserDetails, listGames } from '../../api';
 import { useAuth } from '../../hooks/authContext';
 import GameListItem from '../../components/GameListItem';
-import { Text } from 'react-native';
+import { Alert, Text } from 'react-native';
 import styled from 'styled-components/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { NavigationProp, useNavigation } from '@react-navigation/native';
+import { NavigationProp, useFocusEffect, useNavigation } from '@react-navigation/native';
 import { GameRouteNames } from '../../router/route-names';
 
 const Container = styled(SafeAreaView)`
@@ -13,9 +13,23 @@ const Container = styled(SafeAreaView)`
     position: relative;
 `;
 
-const FloatingButton = styled.TouchableOpacity`
+const FloatingButtonCreateGame = styled.TouchableOpacity`
     position: absolute;
     right: 20px;
+    bottom: 20px;
+    background-color: #007bff;
+    padding: 15px 20px;
+    border-radius: 30px;
+    elevation: 2;
+    shadow-color: #000;
+    shadow-opacity: 0.3;
+    shadow-radius: 4px;
+    shadow-offset: 0px 2px;
+`;
+
+const FloatingButtonUserDetails = styled.TouchableOpacity`
+    position: absolute;
+    left: 20px;
     bottom: 20px;
     background-color: #007bff;
     padding: 15px 20px;
@@ -31,6 +45,7 @@ const GameList = styled.ScrollView`
     border: 1px solid #000;
     border-radius: 5px;
     margin: 10px;
+    margin-bottom: 50px;
     padding: 10px;
     height: 100%;
     background-color: #f8f9fa;
@@ -58,18 +73,44 @@ const StatusHeader = styled(HeaderText)`
 `;
 
 const LobbyScreen = () => {
-    const auth = useAuth()
     const [games, setGames] = useState<any[]>([])
+    const { token } = useAuth();
+
+    const fetchGames = useCallback(async () => {
+        try {
+            const fetchedGames = await listGames(token);
+            setGames(fetchedGames);
+        } catch (error) {
+            console.error('Failed to fetch games:', error);
+            Alert.alert('Error', 'Failed to load games.');
+        }
+    }, [token]);
 
     useEffect(() => {
-        listGames(auth.token).then(setGames)
-    }, [])
+        fetchGames();
+    }, [fetchGames]);
+
+    useFocusEffect(
+        useCallback(() => {
+            fetchGames();
+        }, [fetchGames])
+    )
 
     const navigation = useNavigation<any>()
 
     const handleCreateGame = async () => {
-        await createGame(auth.token);
-        await listGames(auth.token).then(setGames);
+        try {
+            await createGame(token);
+            await fetchGames();
+        } catch (error) {
+            console.error('Failed to create game:', error);
+            Alert.alert('Error', 'Failed to create game.');
+        }
+    };
+
+    const goToUserDetails = () => {
+        navigation.navigate(GameRouteNames.USER_DETAILS, {token: token}),
+        getUserDetails(token)
     }
 
     return (
@@ -86,15 +127,18 @@ const LobbyScreen = () => {
                     onPress={
                         () => {
                             navigation.navigate(GameRouteNames.TABLE, {gameId: game.id}),
-                            getDetailsOfGame(auth.token, game.id)
+                            getDetailsOfGame(token, game.id)
                         }
                     }
                     />
                 ))}
             </GameList>
-            <FloatingButton onPress={() => handleCreateGame()}>
+            <FloatingButtonUserDetails onPress={() => goToUserDetails()}>
+                <Text style={{ color: 'white', fontSize: 16 }}>User Details</Text>
+            </FloatingButtonUserDetails>
+            <FloatingButtonCreateGame onPress={() => handleCreateGame()}>
                 <Text style={{ color: 'white', fontSize: 16 }}>Create Game</Text>
-            </FloatingButton>
+            </FloatingButtonCreateGame>
         </Container>
     );
 }

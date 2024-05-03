@@ -37,12 +37,17 @@ export const listGames = async (token: string) => {
             ...baseHeaders,
             'Authorization': `Bearer ${token}`
         }
-    })
+    });
+
+    if (!result.ok) {
+        throw new Error('Failed to fetch games');
+    }
 
     const data = await result.json();
-    console.log(data);
+    // console.log(data);
     return data["games"];
-}
+};
+
 
 export const createGame = async (token: string) => {
     const result = await fetch(`${baseUrl}/game`, {
@@ -54,7 +59,7 @@ export const createGame = async (token: string) => {
     })
 
     const data = await result.json();
-    console.log(data);
+    // console.log(data);
     return data;
 }
 
@@ -72,6 +77,26 @@ export const getDetailsOfGame = async (token: string, gameId: string) => {
     return data;
 }
 
+export const joinGame = async (token: string, gameId: string) => {
+    const result = await fetch(`${baseUrl}/game/join/${gameId}`, {
+        method: 'POST',
+        headers: {
+            ...baseHeaders,
+            'Authorization': `Bearer ${token}`
+        }
+    });
+
+    if (!result.ok) {
+        // If the server responded with a non-2xx status, handle it as an error
+        const errorData = await result.json(); // Assuming the server sends back a JSON with error details
+        throw new Error(errorData.message || "Failed to join the game.");
+    }
+
+    const data = await result.json();
+    console.log(data);
+    return data;
+}
+
 export const getUserDetails = async (token: string) => {
     const result = await fetch(`${baseUrl}/user/details/me`, {
         method: 'GET',
@@ -82,6 +107,6 @@ export const getUserDetails = async (token: string) => {
     })
 
     const data = await result.json();
-    console.log(data);
+    // console.log(data);
     return data;
 }
