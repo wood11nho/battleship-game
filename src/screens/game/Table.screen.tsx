@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Alert, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, ScrollView, Text, TouchableOpacity, View, ViewProps } from 'react-native';
 import styled from 'styled-components/native';
 import { useRoute } from '@react-navigation/native';
 import { GameContext, useGameContext } from '../../hooks/gameContext';
@@ -8,27 +8,40 @@ import Table from '../../components/Table';
 import { joinGame } from '../../api';
 import { useAuth } from '../../hooks/authContext';
 
+interface TableHeaderProps extends ViewProps {
+    bgColor: string;
+}
+
 const StyledSafeAreaView = styled(SafeAreaView)`
     flex: 1;
     background-color: #f0f8ff;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
+    padding-top: 0px;
+    padding-bottom: 0px;
 `;
 
 const StyledScrollView = styled(ScrollView)`
     flex: 1;
     width: 100%;
+    padding-top: 0px;
+    padding-bottom: 0px;
 `;
 
 const ContentContainer = styled(View)`
     flex-grow: 1;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
+    width: 100%;
+    padding-top: 0px;
+    padding-bottom: 0px;
 `;
 
 const Heading = styled(View)`
+    flex-direction: row;
     align-items: center;
     justify-content: center;
+    padding: 10px;
 `;
 
 const PlayerText = styled(Text)`
@@ -36,6 +49,7 @@ const PlayerText = styled(Text)`
     font-size: 12.5px;
     font-weight: bold;
     text-align: center;
+    flex: 1;
 `;
 
 const VsText = styled(Text)`
@@ -43,6 +57,7 @@ const VsText = styled(Text)`
     font-size: 11.25px;
     font-weight: bold;
     text-align: center;
+    padding: 0px 10px;
 `;
 
 const JoinButton = styled(TouchableOpacity)`
@@ -62,6 +77,7 @@ const ButtonText = styled(Text)`
 const PlayerToMoveContainer = styled(View)`
     padding: 6.25px 12.5px;
     margin-bottom: 12.5px;
+    margin-top: 12.5px;
     background-color: #4CAF50;
     border-radius: 6.25px;
     align-items: center;
@@ -80,11 +96,26 @@ const PlayerToMoveText = styled(Text)`
 `;
 
 const ReplayButton = styled(TouchableOpacity)`
-    background-color: #4CAF50;
+    background-color: #E91E63;
     padding: 6.25px 12.5px;
     border-radius: 12.5px;
     elevation: 3;
     margin-top: 12.5px;
+    margin-bottom: 12.5px;
+`;
+
+const TableHeader = styled.View<TableHeaderProps>`
+    background-color: ${props => props.bgColor};
+    padding: 8px 16px;
+    border-radius: 5px;
+    margin-bottom: 5px;
+`;
+
+const TableHeaderText = styled(Text)`
+    color: #fff;
+    font-size: 14px;
+    font-weight: bold;
+    text-align: center;
 `;
 
 
@@ -99,8 +130,7 @@ const TableScreen = () => {
     const [opponentShips, setOpponentShips] = useState(createEmptyBoard());
     const [playerShipsReplay, setPlayerShipsReplay] = useState(createEmptyBoard());
     const [opponentShipsReplay, setOpponentShipsReplay] = useState(createEmptyBoard());
-
-
+    const [isReplaying, setIsReplaying] = useState(false);
 
     const currentPlayerEmail = gameContext.game?.playerToMoveId === gameContext.game?.player1Id
         ? gameContext.game?.player1?.email
@@ -194,6 +224,7 @@ const TableScreen = () => {
             return; // Exit if no moves are available
         }
     
+        setIsReplaying(true);
         let moveIndex = 0;
     
         const replayMoves = () => {
@@ -221,7 +252,11 @@ const TableScreen = () => {
                 moveIndex++;
                 if (moveIndex < moves.length) {
                     setTimeout(replayMoves, 1000); // Schedule the next move
+                } else {
+                    setIsReplaying(false);
                 }
+            } else {
+                setIsReplaying(false);
             }
         };
     
@@ -262,9 +297,14 @@ const TableScreen = () => {
                     </Heading>
                     {(gameContext.game?.status == 'ACTIVE' || gameContext.game?.status == 'FINISHED') && (auth.id === gameContext.game?.player1Id || auth.id === gameContext.game?.player2Id) ?
                         (
-                            // Show both tables
-                            <View style={{ flexDirection: 'column' }}>
-                                <Table state={playerShips} onCellClick={() => { }} />
+                            <View style={{ flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                                <TableHeader bgColor='#4CAF50'>
+                                    <TableHeaderText>YOU</TableHeaderText>
+                                </TableHeader>
+                                <Table state={playerShips} />
+                                <TableHeader bgColor='#FF4136'>
+                                    <TableHeaderText>OPP</TableHeaderText>
+                                </TableHeader>
                                 <Table state={opponentShips} onCellClick={() => { }} />
                             </View>
                         ) : null
@@ -277,7 +317,7 @@ const TableScreen = () => {
                     {
                         gameContext.game?.status === 'FINISHED' &&
                         (
-                            <ReplayButton onPress={handleReplay}>
+                            <ReplayButton onPress={handleReplay} disabled={isReplaying} style={{ opacity: isReplaying ? 0.5 : 1 }}>
                                 <ButtonText>Replay</ButtonText>
                             </ReplayButton>
                         )
@@ -286,9 +326,22 @@ const TableScreen = () => {
                         gameContext.game?.status === 'FINISHED' &&
                         (
                             <View style={{ flexDirection: 'column' }}>
-                                <Table state={playerShipsReplay} onCellClick={() => { }} />
-                                <Table state={opponentShipsReplay} onCellClick={() => { }} />
+                                <TableHeader bgColor='#4CAF50'>
+                                    <TableHeaderText>P1</TableHeaderText>
+                                </TableHeader>
+                                <Table state={playerShipsReplay} />
+                                <TableHeader bgColor='#FF4136'>
+                                    <TableHeaderText>P2</TableHeaderText>
+                                </TableHeader>
+                                <Table state={opponentShipsReplay} />
                             </View>
+                        )
+                    }
+                    {
+                        (gameContext.game?.status === 'MAP_CONFIG') && (auth.id === gameContext.game?.player1Id || auth.id === gameContext.game?.player2Id) &&
+                        (
+                            // Here we will have the map configuration screen
+                            <></>
                         )
                     }
                 </ContentContainer>
