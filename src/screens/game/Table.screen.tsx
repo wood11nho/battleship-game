@@ -321,7 +321,8 @@ const TableScreen = () => {
                                 <ButtonText>Replay</ButtonText>
                             </ReplayButton>
                         )
-                    }                    
+                    }               
+                         
                     {
                         gameContext.game?.status === 'FINISHED' &&
                         (
