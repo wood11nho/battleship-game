@@ -87,13 +87,12 @@ export const joinGame = async (token: string, gameId: string) => {
     });
 
     if (!result.ok) {
-        // If the server responded with a non-2xx status, handle it as an error
-        const errorData = await result.json(); // Assuming the server sends back a JSON with error details
+        const errorData = await result.json();
         throw new Error(errorData.message || "Failed to join the game.");
     }
 
     const data = await result.json();
-    console.log(data);
+    // console.log(data);
     return data;
 }
 
@@ -109,4 +108,47 @@ export const getUserDetails = async (token: string) => {
     const data = await result.json();
     // console.log(data);
     return data;
+}
+
+export const sendMapConfiguration = async (token: string, gameId: string, mapConfiguration: any) => {
+    const ships = mapConfiguration.map((ship: any) => {
+        return {
+            x: ship.x,
+            y: ship.y,
+            size: ship.size,
+            direction: ship.direction
+        }
+    });
+
+    const result = await fetch(`${baseUrl}/game/${gameId}`, {
+        method: 'PATCH',
+        headers: {
+            ...baseHeaders,
+            'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ ships })
+    });
+
+    const data = await result.json();
+    // console.log(data);
+    return data;
+}
+
+export const sendStrike = async (token: string, gameId: string, x: string, y: number) => {
+    const result = await fetch(`${baseUrl}/game/strike/${gameId}`, {
+        method: 'POST',
+        headers: {
+            ...baseHeaders,
+            'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ x, y })
+    });
+
+    const data = await result.json();
+    if (result.ok) {
+        console.log(data);
+        return data;
+    } else {
+        throw new Error(data.message);
+    }
 }

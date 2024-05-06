@@ -50,7 +50,7 @@ export const AuthContextProvider: React.FC<{children: React.ReactNode}> = ({chil
                 } else {
                     setToken(value);
                     getUserDetails(value).then((user) => {
-                        console.log("user email: ", user.user.email);
+                        // console.log("user email: ", user.user.email);
                         setEmail(user.user.email);
                         setId(user.user.id);
                     });
@@ -62,7 +62,7 @@ export const AuthContextProvider: React.FC<{children: React.ReactNode}> = ({chil
     const handleLogin = async (email: string, password: string) => {
         try{
             const result = await login(email, password);
-            console.log('login: ', result);
+            // console.log('login: ', result);
             AsyncStorage.setItem('token', result);
             setToken(result);
 
@@ -80,7 +80,7 @@ export const AuthContextProvider: React.FC<{children: React.ReactNode}> = ({chil
     const handleRegister = async (email: string, password: string) => {
         try{
             const result = await register(email, password);
-            console.log(result);
+            // console.log(result);
             setToken(result);
             AsyncStorage.setItem('token', result);
             getUserDetails(result).then((user) => {
@@ -96,8 +96,11 @@ export const AuthContextProvider: React.FC<{children: React.ReactNode}> = ({chil
     const handleLogout = async () => {
         await AsyncStorage.removeItem('token');
         setToken('');
+        setEmail('');
+        setId('');
         Alert.alert('Logout', 'You have been logged out');
     }
+    
     
     return (
         <AuthContext.Provider value={

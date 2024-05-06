@@ -2,11 +2,13 @@ import React, { useEffect, useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Alert, ScrollView, Text, TouchableOpacity, View, ViewProps } from 'react-native';
 import styled from 'styled-components/native';
-import { useRoute } from '@react-navigation/native';
+import { useFocusEffect, useRoute } from '@react-navigation/native';
 import { GameContext, useGameContext } from '../../hooks/gameContext';
-import Table from '../../components/Table';
-import { joinGame } from '../../api';
+import Table, { ICell } from '../../components/Table';
+import { joinGame, sendMapConfiguration, sendStrike } from '../../api';
 import { useAuth } from '../../hooks/authContext';
+import ShipConfig from '../../components/ShipConfig';
+import { StyleSheet } from 'react-native';
 
 interface TableHeaderProps extends ViewProps {
     bgColor: string;
@@ -118,8 +120,21 @@ const TableHeaderText = styled(Text)`
     text-align: center;
 `;
 
+const ConfigContainer = styled.View`
+    width: 100%;
+    padding: 10px;
+    align-items: center;
+`;
 
-const createEmptyBoard = () => Array.from({ length: 10 }, () => Array(10).fill('')); // A change to one cell will not affect all cells
+const SendMapButton = styled(TouchableOpacity)`
+    background-color: #007bff;
+    padding: 6.25px 12.5px;
+    border-radius: 12.5px;
+    elevation: 3;
+    margin-top: 12.5px;
+`;
+
+const createEmptyBoard = () => Array.from({ length: 10 }, () => Array(10).fill(''));
 
 const TableScreen = () => {
     const route = useRoute<any>();
@@ -131,6 +146,7 @@ const TableScreen = () => {
     const [playerShipsReplay, setPlayerShipsReplay] = useState(createEmptyBoard());
     const [opponentShipsReplay, setOpponentShipsReplay] = useState(createEmptyBoard());
     const [isReplaying, setIsReplaying] = useState(false);
+    const [hasConfigured, setHasConfigured] = useState(false);
 
     const currentPlayerEmail = gameContext.game?.playerToMoveId === gameContext.game?.player1Id
         ? gameContext.game?.player1?.email
@@ -142,14 +158,26 @@ const TableScreen = () => {
                 if (gameContext.game && ['ACTIVE', 'FINISHED'].includes(gameContext.game.status) &&
                     (gameContext.game?.player1Id === auth.id || gameContext.game?.player2Id === auth.id)) {
                     getPlayerShips();
-                    getOpponentShips();
+                    // getOpponentShips();
                 }
+                if (gameContext.game && gameContext.game.status === 'MAP_CONFIG' && 
+                (gameContext.game.player1Id === auth.id || gameContext.game.player2Id === auth.id) && 
+                (gameContext.game.shipsCoord?.length ?? 0) > 0) {
+                if (gameContext.game.shipsCoord?.some(coord => coord.playerId === auth.id)) {
+                    setHasConfigured(true);
+                }
+            }
             });
         }
     }, [route.params?.gameId, gameContext.game?.status, auth.id]);
+    
+    useEffect(() => {
+        console.log('Game moves updated, refreshing player ships...');
+        getOpponentShips();
+    }, [gameContext.game?.moves]);
 
     const getPlayerShips = () => {
-        const newPlayerShips = playerShips.map(row => [...row]); // Deep copy the array
+        const newPlayerShips = playerShips.map(row => [...row]);
         gameContext.game?.shipsCoord?.forEach(coord => {
             // console.log('Player ID:', coord.playerId, 'Auth ID:', auth.id);
             if (coord.hit){
@@ -174,20 +202,20 @@ const TableScreen = () => {
     };
 
     const getOpponentShips = () => {
-        const newOpponentShips = opponentShips.map(row => [...row]);
         gameContext.game?.moves?.forEach(move => {
             if (move.playerId === auth.id) {
-                if (move.result === true) {
-                    newOpponentShips[move.y - 1][move.x.charCodeAt(0) - 'A'.charCodeAt(0)] = 'X';
-                } else {
-                    newOpponentShips[move.y - 1][move.x.charCodeAt(0) - 'A'.charCodeAt(0)] = 'O';
-                }
+                setOpponentShips(prevShips => {
+                    const newShips = [...prevShips];
+                    const xIndex = move.x.charCodeAt(0) - 'A'.charCodeAt(0);
+                    const yIndex = move.y - 1;
+                    newShips[yIndex][xIndex] = move.result ? 'X' : 'O';
+                    return newShips;
+                });
             }
-        }
-        );
-        setOpponentShips(newOpponentShips);
-        // console.log('Opponent ships state updated');
+        });
+        console.log('Opponent ships state should be updated now');
     };
+    
 
     const handleJoinGame = async () => {
         console.log('Joining game...');
@@ -199,7 +227,6 @@ const TableScreen = () => {
                 })
                 .catch(error => {
                     console.error(error);
-                    // Assuming the error object has a message property
                     Alert.alert("Error Joining Game", error.message, [
                         { text: "OK", onPress: () => console.log("OK Pressed") }
                     ]);
@@ -221,7 +248,7 @@ const TableScreen = () => {
         const moves = gameContext.game?.moves;
         if (!moves || moves.length === 0) {
             console.log("No moves to replay.");
-            return; // Exit if no moves are available
+            return;
         }
     
         setIsReplaying(true);
@@ -229,7 +256,6 @@ const TableScreen = () => {
     
         const replayMoves = () => {
             if (moveIndex < moves.length) {
-                // Start with a fresh state for each iteration to accumulate from the first move to the current move
                 const newPlayerShips = createEmptyBoard();
                 const newOpponentShips = createEmptyBoard();
     
@@ -239,10 +265,8 @@ const TableScreen = () => {
                     const yIndex = move.y - 1;
     
                     if (move.playerId === gameContext.game?.player1Id) {
-                        // Update the opponent's board since player 1's moves affect player 2's board
                         newOpponentShips[yIndex][xIndex] = move.result ? 'X' : 'O';
                     } else {
-                        // Update the player's board since player 2's moves affect player 1's board
                         newPlayerShips[yIndex][xIndex] = move.result ? 'X' : 'O';
                     }
                 }
@@ -251,7 +275,7 @@ const TableScreen = () => {
                 setOpponentShipsReplay(newOpponentShips);
                 moveIndex++;
                 if (moveIndex < moves.length) {
-                    setTimeout(replayMoves, 1000); // Schedule the next move
+                    setTimeout(replayMoves, 1000);
                 } else {
                     setIsReplaying(false);
                 }
@@ -260,10 +284,169 @@ const TableScreen = () => {
             }
         };
     
-        replayMoves(); // Start the replay
+        replayMoves();
+    };
+
+    const [shipConfigs, setShipConfigs] = useState<any[]>(
+        [
+            { shipId: 0, x: "A", y: 1, size: 2, direction: "HORIZONTAL" },
+            { shipId: 1, x: "A", y: 2, size: 2, direction: "HORIZONTAL" },
+            { shipId: 2, x: "A", y: 3, size: 2, direction: "HORIZONTAL" },
+            { shipId: 3, x: "A", y: 4, size: 2, direction: "HORIZONTAL" },
+            { shipId: 4, x: "A", y: 5, size: 2, direction: "HORIZONTAL" },
+            { shipId: 5, x: "A", y: 6, size: 2, direction: "HORIZONTAL" },
+            { shipId: 6, x: "A", y: 7, size: 2, direction: "HORIZONTAL" },
+            { shipId: 7, x: "A", y: 8, size: 2, direction: "HORIZONTAL" },
+            { shipId: 8, x: "A", y: 9, size: 2, direction: "HORIZONTAL" },
+            { shipId: 9, x: "A", y: 10, size: 2, direction: "HORIZONTAL" }
+        ]
+    )
+
+    const handleShipConfig = (configuration: any) => {
+        if (validateShipPlacement(configuration, shipConfigs)) {
+            const newShipConfig = shipConfigs.map(ship => ship.shipId === configuration.shipId ? configuration : ship);
+            setShipConfigs(newShipConfig);
+            console.log('Ship configuration updated:', newShipConfig);
+        } else {
+            console.log('Invalid ship placement');
+        }
+    };
+    
+
+    const getShipPositions = (x: string, y: number, size: number, direction: string) => {
+        let positions = [];
+        const startX = x.charCodeAt(0) - 'A'.charCodeAt(0);
+        const startY = y - 1;
+    
+        if (direction === "HORIZONTAL") {
+            for (let i = 0; i < size; i++) {
+                positions.push({ x: startX + i, y: startY });
+            }
+        } else { // VERTICAL
+            for (let i = 0; i < size; i++) {
+                positions.push({ x: startX, y: startY + i });
+            }
+        }
+        return positions;
+    };
+
+    const validateShipPlacement = (newShipConfig: any, allShipsConfig: any[]) => {
+        const newPositions = getShipPositions(newShipConfig.x, newShipConfig.y, newShipConfig.size, newShipConfig.direction);
+        for (let pos of newPositions) {
+            if (pos.x >= 10 || pos.y >= 10) {
+                return false;
+            }
+            for (let config of allShipsConfig) {
+                if (newShipConfig.shipId !== config.shipId) {
+                    let existingPositions = getShipPositions(config.x, config.y, config.size, config.direction);
+                    for (let existingPos of existingPositions) {
+                        if (existingPos.x === pos.x && existingPos.y === pos.y) {
+                            return false;
+                        }
+                    }
+                }
+            }
+        }
+        return true;
+    };
+
+    const renderMapGrid = () => {
+        let grid = Array(10).fill(null).map(() => Array(10).fill(' '));
+    
+        shipConfigs.forEach(ship => {
+            getShipPositions(ship.x, ship.y, ship.size, ship.direction).forEach(pos => {
+                if (pos.x < 10 && pos.y < 10) {
+                    grid[pos.y][pos.x] = '🚢';
+                }
+            });
+        });
+    
+        return (
+            <View style={styles.grid}>
+                {grid.map((row, rowIndex) => (
+                    <View key={rowIndex} style={styles.row}>
+                        {row.map((cell, cellIndex) => (
+                            <View key={cellIndex} style={[styles.cell, cell === '🚢' ? styles.ship : null]}>
+                                <Text>
+                                    {cell}
+                                </Text>
+                            </View>
+                        ))}
+                    </View>
+                ))}
+            </View>
+        );
     };
     
     
+    const styles = StyleSheet.create({
+        grid: {
+            flexDirection: 'column',
+            backgroundColor: '#fff',
+            borderColor: '#000',
+            borderWidth: 1,
+            width: 300,
+            height: 300,
+        },
+        row: {
+            flexDirection: 'row',
+            flex: 1,
+        },
+        cell: {
+            flex: 1,
+            height: 30,
+            borderWidth: 0.5,
+            borderColor: '#ddd',
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: 'transparent'
+        },
+        ship: {
+            backgroundColor: '#b0c4de'
+        }
+    });
+
+    const handleSendMapConfig = () => {
+        if (gameContext.game) {
+            sendMapConfiguration(auth.token, gameContext.game.id, shipConfigs)
+            .then(() => {
+                gameContext.getDetailsOfGame(route.params.gameId);
+                setHasConfigured(true);
+                Alert.alert("Configuration Sent", "Your configuration has been sent. Waiting for opponent.", [
+                    { text: "OK" }
+                ]);
+            })
+            .catch(error => {
+                console.error("Error when sending map configuration:", error);
+                Alert.alert("Error Sending Map Configuration", error.message, [
+                    { text: "OK" }
+                ]);
+            });
+        }
+    };
+
+    const handleStrike = (cell: ICell) => {
+        if (gameContext.game && gameContext.game.status === 'ACTIVE' && gameContext.game.playerToMoveId === auth.id) {
+            const cellSymbol = opponentShips[cell.y - 1][cell.x.charCodeAt(0) - 'A'.charCodeAt(0)];
+            if (cellSymbol === 'X' || cellSymbol === 'O') {
+                console.log('Cell already hit');
+                return;
+            }
+    
+            sendStrike(auth.token, gameContext.game.id, cell.x, cell.y)
+                .then(() => {
+                    console.log('Strike sent, updating game details...');
+                    return gameContext.getDetailsOfGame(route.params.gameId);
+                })
+                .then(() => {
+                    console.log('Game details updated, refreshing opponent ships...');
+                    getOpponentShips();
+                })
+                .catch(error => {
+                    console.error('Error sending strike:', error);
+                });
+        }
+    };
 
     return (
         <StyledSafeAreaView>
@@ -305,7 +488,7 @@ const TableScreen = () => {
                                 <TableHeader bgColor='#FF4136'>
                                     <TableHeaderText>OPP</TableHeaderText>
                                 </TableHeader>
-                                <Table state={opponentShips} onCellClick={() => { }} />
+                                <Table state={opponentShips} onCellClick={handleStrike} />
                             </View>
                         ) : null
                     }
@@ -339,10 +522,34 @@ const TableScreen = () => {
                         )
                     }
                     {
-                        (gameContext.game?.status === 'MAP_CONFIG') && (auth.id === gameContext.game?.player1Id || auth.id === gameContext.game?.player2Id) &&
+                        (gameContext.game?.status === 'MAP_CONFIG') && hasConfigured &&
                         (
-                            // Here we will have the map configuration screen
-                            <></>
+                            <PlayerToMoveContainer>
+                                <PlayerToMoveText>Waiting for opponent to configure map</PlayerToMoveText>
+                            </PlayerToMoveContainer>
+                        )
+                    }
+                    {
+                        (gameContext.game?.status === 'MAP_CONFIG') && (auth.id === gameContext.game?.player1Id || auth.id === gameContext.game?.player2Id) && (!hasConfigured) &&
+                        (
+                            <ConfigContainer>
+                                <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
+                                    {renderMapGrid()}
+                                </View>
+                                <ShipConfig shipId={0} size={2} onConfigChange={handleShipConfig} />
+                                <ShipConfig shipId={1} size={2} onConfigChange={handleShipConfig} />
+                                <ShipConfig shipId={2} size={2} onConfigChange={handleShipConfig} />
+                                <ShipConfig shipId={3} size={2} onConfigChange={handleShipConfig} />
+                                <ShipConfig shipId={4} size={3} onConfigChange={handleShipConfig} />
+                                <ShipConfig shipId={5} size={3} onConfigChange={handleShipConfig} />
+                                <ShipConfig shipId={6} size={3} onConfigChange={handleShipConfig} />
+                                <ShipConfig shipId={7} size={4} onConfigChange={handleShipConfig} />
+                                <ShipConfig shipId={8} size={4} onConfigChange={handleShipConfig} />
+                                <ShipConfig shipId={9} size={6} onConfigChange={handleShipConfig} />
+                                <SendMapButton onPress={handleSendMapConfig}>
+                                    <ButtonText>Send Configuration</ButtonText>
+                                </SendMapButton>
+                            </ConfigContainer>
                         )
                     }
                 </ContentContainer>
@@ -353,6 +560,6 @@ const TableScreen = () => {
 
 export default () => (
     <GameContext>
-        <TableScreen />
+        <TableScreen/>
     </GameContext>
 );

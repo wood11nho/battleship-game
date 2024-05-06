@@ -6,7 +6,8 @@ import { Alert, Text } from 'react-native';
 import styled from 'styled-components/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NavigationProp, useFocusEffect, useNavigation } from '@react-navigation/native';
-import { GameRouteNames } from '../../router/route-names';
+import { AuthRouteNames, GameRouteNames } from '../../router/route-names';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const Container = styled(SafeAreaView)`
     flex: 1;
@@ -57,24 +58,39 @@ const Header = styled.View`
     justify-content: space-between;
     padding: 10px;
     margin: 10px;
+    align-items: center;
 `;
 
 const HeaderText = styled.Text`
     font-weight: bold;
     color: #333;
-`;
-
-const IDHeader = styled(HeaderText)`
     flex: 1;
-`;
-
-const StatusHeader = styled(HeaderText)`
     text-align: center;
 `;
 
+const IDHeader = styled(HeaderText)`
+    text-align: left;
+`;
+
+const StatusHeader = styled(HeaderText)`
+    text-align: right;
+`;
+
+const LogoutButton = styled.TouchableOpacity`
+    padding: 10px;
+    background-color: #dc3545;
+    border-radius: 5px;
+    elevation: 2;
+    shadow-color: #000;
+    shadow-opacity: 0.3;
+    shadow-radius: 4px;
+    shadow-offset: 0px 2px;
+    align-self: center;
+    flex-shrink: 0;
+`;
 const LobbyScreen = () => {
     const [games, setGames] = useState<any[]>([])
-    const { token } = useAuth();
+    const { token, logout } = useAuth();
 
     const fetchGames = useCallback(async () => {
         try {
@@ -102,6 +118,7 @@ const LobbyScreen = () => {
         try {
             await createGame(token);
             await fetchGames();
+
         } catch (error) {
             console.error('Failed to create game:', error);
             Alert.alert('Error', 'Failed to create game.');
@@ -113,10 +130,21 @@ const LobbyScreen = () => {
         getUserDetails(token)
     }
 
+    const handleLogoutPress = async () => {
+        await logout();
+        navigation.reset({
+            index: 0,
+            routes: [{ name: AuthRouteNames.LOGIN }]
+        });
+    };
+
     return (
         <Container>
             <Header>
                 <IDHeader>ID</IDHeader>
+                <LogoutButton onPress={handleLogoutPress}>
+                    <Text style={{ color: 'white', fontSize: 16 }}>Logout</Text>
+                </LogoutButton>
                 <StatusHeader>Status</StatusHeader>
             </Header>
             <GameList>
