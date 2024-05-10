@@ -219,6 +219,7 @@ const TableScreen = () => {
 
     const handleJoinGame = async () => {
         console.log('Joining game...');
+        console.log('Game:', gameContext);
         if (gameContext.game) {
             joinGame(auth.token, gameContext.game.id)
                 .then(() => {
