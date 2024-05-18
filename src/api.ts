@@ -27,7 +27,9 @@ export const register = async (email: string, password: string) => {
     })
 
     const data = await result.json();
-    return data.accessToken;
+    // console.log(data);
+    // console.log(data.accessToken);
+    return data;
 };
 
 export const listGames = async (token: string) => {
@@ -73,7 +75,7 @@ export const getDetailsOfGame = async (token: string, gameId: string) => {
     })
 
     const data = await result.json();
-    console.log(data);
+    // console.log(data);
     return data;
 }
 
@@ -146,7 +148,7 @@ export const sendStrike = async (token: string, gameId: string, x: string, y: nu
 
     const data = await result.json();
     if (result.ok) {
-        console.log(data);
+        // console.log(data);
         return data;
     } else {
         throw new Error(data.message);

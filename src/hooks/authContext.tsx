@@ -7,7 +7,7 @@ import { decode as atob } from "base-64";
 interface IAuthContext {
     token: string;
     login: (email: string, password: string) => Promise<void>;
-    register: (email: string, password: string) => Promise<void>;
+    register: (email: string, password: string) => Promise<RegisterResult>;
     logout: () => Promise<void>;
     isLoading: boolean;
     email: string;
@@ -18,13 +18,22 @@ export const AuthContext = createContext<IAuthContext>(
     {
         token: '',
         login: async () => {},
-        register: async () => {},
+        register: async (email: string, password: string) => { 
+            throw new Error("Not implemented"); 
+            return { email: '', id: '', message: '' };
+        },
         logout: async () => {},
         isLoading: false,
         email: '',
         id: ''
     }
 )
+
+interface RegisterResult {
+    email: string;
+    id: string;
+    message?: string;
+}
 
 export const AuthContextProvider: React.FC<{children: React.ReactNode}> = ({children}) => {
     
@@ -62,7 +71,7 @@ export const AuthContextProvider: React.FC<{children: React.ReactNode}> = ({chil
     const handleLogin = async (email: string, password: string) => {
         try{
             const result = await login(email, password);
-            // console.log('login: ', result);
+            console.log('login: ', result);
             AsyncStorage.setItem('token', result);
             setToken(result);
 
@@ -79,17 +88,22 @@ export const AuthContextProvider: React.FC<{children: React.ReactNode}> = ({chil
 
     const handleRegister = async (email: string, password: string) => {
         try{
+            // In varianta initiala, register returna token-ul, insa s-a modificat API-ul si acum
+            // returneaza id si parola, deci nu mai pot sa salvez token-ul in AsyncStorage
+            // Deci, redirectionam la pagina de login
             const result = await register(email, password);
-            // console.log(result);
-            setToken(result);
-            AsyncStorage.setItem('token', result);
-            getUserDetails(result).then((user) => {
-                setEmail(user.user.email);
-                setId(user.user.id);
-            });
+            console.log('register: ', result);
+            // AsyncStorage.setItem('token', result);
+            // setToken(result);
+            // getUserDetails(result).then((user) => {
+            //     setEmail(user.user.email);
+            //     setId(user.user.id);
+            // });
+            return result;
         }
         catch(error) {
             console.log(error);
+            throw error;
         }
     }
 
